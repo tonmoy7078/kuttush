@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tonmoy's Study Time Management</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+    *{margin:0;padding:0;box-sizing:border-box;font-family:Segoe UI,Arial,sans-serif;}
+    body{
+        background:#4caf50;
+        height:100vh;
+        overflow:hidden;
+        padding:14px;
+    }
+
+    .dashboard{
+        height:calc(100vh - 70px);
+        display:flex;
+        flex-direction:column;
+        gap:10px;
+        background: green;
+    }
+
+    .row{
+        display:flex;
+        gap:10px;
+        flex:1;
+        min-height:0;
+    }
+
+    .card{
+        background:#2a3245;
+   color:white;
+        border-radius:12px;
+        padding:12px;
+        box-shadow:0 2px 10px rgba(0,0,0,0.08);
+        display:flex;
+        flex-direction:column;
+        min-height:0;
+    }
+
+    .title{
+        font-weight:600;
+        margin-bottom:8px;
+        font-size:15px;
+    }
+
+    /* ROW 1 */
+    .goal-card{flex:2;}
+    .pie-card{flex:1;align-items:center;justify-content:center;}
+
+    .goal-inputs{
+        display:flex;
+        gap:8px;
+        align-items:center;
+        margin-bottom:8px;
+    }
+
+    input{
+        padding:6px 8px;
+        border:1px solid #ccc;
+        border-radius:6px;
+        outline:none;
+    }
+
+    button{
+        border:none;
+        background:#007bff;
+        color:#fff;
+        padding:6px 10px;
+        border-radius:6px;
+        cursor:pointer;
+    }
+    button:disabled{opacity:0.5;cursor:not-allowed;}
+
+    .today-total{
+        margin-top:8px;
+        font-weight:600;
+        color:white;
+    }
+.bigger-text{
+    font-size:20px;
+    font-weight:700;
+}
+
+    .motiv{
+        margin-top:6px;
+        font-size:13px;
+        color:green;
+        font-weight:600;
+        display:none;
+    }
+
+    /* ROW 2 */
+    .timer-card{flex:2;}
+    .subject-card{flex:1;max-width:260px;}
+
+    .timer-display{
+        font-size:34px;
+        font-weight:bold;
+        margin:10px 0;
+        text-align:center;
+    }
+
+    .timer-controls{
+        display:flex;
+        justify-content:center;
+        gap:10px;
+    }
+
+    .running{
+        box-shadow:0 0 18px rgba(0,123,255,0.6);
+        transition:0.3s;
+    }
+
+    /* SMALL SUBJECT LIST */
+    .subject-input-row{
+        display:flex;
+        gap:6px;
+        margin-bottom:8px;
+    }
+
+    .subject-list{
+        display:flex;
+        flex-wrap:wrap;
+        gap:6px;
+        overflow:auto;
+    }
+
+.subject-pill{
+    background:#2a3245;   /* dark background */
+    color:white;          /* white text */
+    border-radius:999px;
+    padding:4px 8px;
+    font-size:12px;
+    display:flex;
+    align-items:center;
+    gap:5px;
+}
+
+    .remove-btn{
+        background:#ff4d4d;
+        padding:2px 6px;
+        font-size:11px;
+        border-radius:999px;
+    }
+
+    /* ROW 3 */
+    .chart-card{flex:1;}
+    canvas{max-width:100%;}
+
+    #pieChart{
+        width:180px !important;
+        height:180px !important;
+    }
+/* ---------- PHONE VIEW (RESPONSIVE) ---------- */
+@media (max-width: 768px){
+
+    body{
+        overflow:auto;
+        height:auto;
+        padding:8px;
+    }
+
+    .dashboard{
+        height:auto;
+        gap:8px;
+    }
+
+    .row{
+        flex-direction:column;
+        height:auto;
+    }
+
+    .card{
+        width:100%;
+        min-height:auto;
+    }
+
+    .goal-card,
+    .pie-card,
+    .timer-card,
+    .subject-card,
+    .chart-card{
+        flex:none;
+        width:100%;
+        max-width:none;
+    }
+
+    #pieChart{
+        width:150px !important;
+        height:150px !important;
+    }
+
+    .timer-display{
+        font-size:28px;
+    }
+
+    h2{
+        font-size:18px;
+    }
+
+    .bigger-text{
+        font-size:16px;
+    }
+}
+</style>
+</head>
+
+<body>
+<h2 style="text-align:center;margin-bottom:10px;">
+    Tonmoy's Study Time Management
+</h2>
+
+<div class="dashboard">
+
+    <!-- ROW 1 -->
+    <div class="row">
+        <div class="card goal-card">
+            <div class="title">Daily Goal</div>
+            <div class="goal-inputs">
+                <input type="number" id="goalHours" placeholder="Hours" min="0">
+                <input type="number" id="goalMinutes" placeholder="Minutes" min="0">
+                <button id="setGoal">Set Goal</button>
+            </div>
+          <div class="today-total bigger-text">
+    Today Study Time: <span id="todayTime">0 hours 0 min</span>
+</div>
+
+<div class="today-total bigger-text">
+    Today Goal: <span id="goalShow">0 hours 0 min</span>
+</div>
+            <div class="motiv" id="motivMsg">🎉 Daily Goal Completed!</div>
+        </div>
+
+        <div class="card pie-card">
+            <div class="title">Daily Progress</div>
+            <canvas id="pieChart"></canvas>
+        </div>
+    </div>
+
+    <!-- ROW 2 -->
+    <div class="row">
+        <div class="card timer-card" id="timerCard">
+            <div class="title">Study Timer</div>
+            <select id="subjectSelect"></select>
+            <div class="timer-display" id="timerDisplay">00:00:00</div>
+            <div class="timer-controls">
+                <button id="startBtn">Start</button>
+                <button id="stopBtn">Stop</button>
+                <button id="resetBtn">Reset</button>
+            </div>
+        </div>
+
+        <div class="card subject-card">
+            <div class="title">Subjects</div>
+            <div class="subject-input-row">
+                <input type="text" id="subjectInput" placeholder="Add subject">
+                <button id="addSubject">Add</button>
+            </div>
+            <div class="subject-list" id="subjectList"></div>
+        </div>
+    </div>
+
+    <!-- ROW 3 -->
+    <div class="row">
+        <div class="card chart-card">
+            <div class="title">Sub vs Time</div>
+            <canvas id="subChart"></canvas>
+        </div>
+
+        <div class="card chart-card">
+            <div class="title">Day vs Hours</div>
+            <canvas id="weekChart"></canvas>
+        </div>
+    </div>
+
+</div>
+
+<script>
+/* ---------- STORAGE ---------- */
+const today = new Date().toISOString().split("T")[0];
+const savedDate = localStorage.getItem("studyDate");
+
+if(savedDate !== today){
+
+    // 🔥 previous study time (hours)
+    let oldStudied = parseInt(localStorage.getItem("studiedMinutes") || 0);
+    let oldHours = oldStudied / 60;
+
+    // 🔥 weekly data load
+    let weeklyData = JSON.parse(localStorage.getItem("weeklyData") || "[0,0,0,0,0,0,0]");
+
+    // shift old day
+    weeklyData.shift();
+
+    // add yesterday hours
+    weeklyData.push(oldHours);
+
+    localStorage.setItem("weeklyData", JSON.stringify(weeklyData));
+
+    // 🔥 reset daily data
+    localStorage.setItem("studiedMinutes", "0");
+    localStorage.setItem("subjectMinutes", JSON.stringify({}));
+    localStorage.setItem("goalMinutes", "0");
+
+    localStorage.setItem("studyDate", today);
+}let subjects = JSON.parse(localStorage.getItem("subjects") || "[]");
+let subjectMinutes = JSON.parse(localStorage.getItem("subjectMinutes") || "{}");
+let studiedMinutes = parseInt(localStorage.getItem("studiedMinutes") || 0);
+let goalMinutes = parseInt(localStorage.getItem("goalMinutes") || 0);
+let weeklyData = JSON.parse(localStorage.getItem("weeklyData") || "[0,0,0,0,0,0,0]");
+
+/* ---------- DOM ---------- */
+const subjectList = document.getElementById("subjectList");
+const subjectSelect = document.getElementById("subjectSelect");
+const todayTime = document.getElementById("todayTime");
+const motivMsg = document.getElementById("motivMsg");
+
+function saveAll(){
+    localStorage.setItem("subjects", JSON.stringify(subjects));
+    localStorage.setItem("subjectMinutes", JSON.stringify(subjectMinutes));
+    localStorage.setItem("studiedMinutes", studiedMinutes);
+}
+
+/* ---------- SUBJECT UI ---------- */
+function renderSubjects(){
+    subjectList.innerHTML="";
+    subjectSelect.innerHTML="";
+    subjects.forEach(s=>{
+        const pill=document.createElement("div");
+        pill.className="subject-pill";
+        pill.innerHTML=`${s} <button class="remove-btn">x</button>`;
+        pill.querySelector("button").onclick=()=>{
+            if(timerRunning) return;
+            subjects=subjects.filter(x=>x!==s);
+            delete subjectMinutes[s];
+            renderSubjects();
+            updateCharts();
+            saveAll();
+        };
+        subjectList.appendChild(pill);
+
+        const opt=document.createElement("option");
+        opt.value=s; opt.textContent=s;
+        subjectSelect.appendChild(opt);
+    });
+}
+document.getElementById("addSubject").onclick=()=>{
+    if(timerRunning) return;
+    const val=document.getElementById("subjectInput").value.trim();
+    if(!val || subjects.includes(val)) return;
+    subjects.push(val);
+    subjectMinutes[val]=0;
+    document.getElementById("subjectInput").value="";
+    renderSubjects();
+    saveAll();
+    updateCharts();
+};
+
+/* ---------- TIMER ---------- */
+let timerRunning=false;
+let seconds=0;
+let interval=null;
+
+function format(sec){
+    let h=Math.floor(sec/3600);
+    let m=Math.floor((sec%3600)/60);
+    let s=sec%60;
+    return String(h).padStart(2,'0')+":"+String(m).padStart(2,'0')+":"+String(s).padStart(2,'0');
+}
+function updateDisplay(){ document.getElementById("timerDisplay").textContent=format(seconds); }
+
+function disableControls(state){
+    document.getElementById("goalHours").disabled=state;
+    document.getElementById("goalMinutes").disabled=state;
+    document.getElementById("setGoal").disabled=state;
+    document.getElementById("addSubject").disabled=state;
+    document.getElementById("subjectInput").disabled=state;
+    document.querySelectorAll(".remove-btn").forEach(b=>b.disabled=state);
+}
+
+document.getElementById("startBtn").onclick=()=>{
+    if(timerRunning || subjects.length===0) return;
+    timerRunning=true;
+    disableControls(true);
+    document.getElementById("timerCard").classList.add("running");
+
+    interval=setInterval(()=>{
+        seconds++;
+        updateDisplay();
+
+        if(seconds%60===0){
+            let sub=subjectSelect.value;
+            studiedMinutes++;
+            if(sub) subjectMinutes[sub]=(subjectMinutes[sub]||0)+1;
+            todayTime.textContent=studiedMinutes+" min";
+
+            saveAll();
+            updateCharts();
+            checkGoal();
+        }
+    },1000);
+};
+
+document.getElementById("stopBtn").onclick=()=>{
+    if(!timerRunning) return;
+    clearInterval(interval);
+    timerRunning=false;
+    disableControls(false);
+    document.getElementById("timerCard").classList.remove("running");
+};
+
+document.getElementById("resetBtn").onclick=()=>{
+    if(timerRunning) return;
+    seconds=0;
+    updateDisplay();
+};
+
+/* ---------- GOAL ---------- */
+document.getElementById("setGoal").onclick=()=>{
+    const h=parseInt(document.getElementById("goalHours").value||0);
+    const m=parseInt(document.getElementById("goalMinutes").value||0);
+    goalMinutes=(h*60)+m;
+    localStorage.setItem("goalMinutes", goalMinutes);
+    updateCharts();
+    checkGoal();
+};
+
+function checkGoal(){
+    if(goalMinutes>0 && studiedMinutes>=goalMinutes){
+        motivMsg.style.display="block";
+    }else motivMsg.style.display="none";
+}
+
+/* ---------- CHARTS ---------- */
+let remainingMinutes = Math.max(goalMinutes - studiedMinutes, 0);
+const pieChart=new Chart(document.getElementById("pieChart"),{
+    type:'pie',
+    data:{
+        labels:['Studied Minutes','Remaining Minutes'],
+        datasets:[{
+            data:[studiedMinutes, remainingMinutes],
+            backgroundColor:['#36a2eb','#555']
+        }]
+    },
+   options:{
+   responsive:false,
+   maintainAspectRatio:false,
+   plugins:{
+      legend:{
+         labels:{
+            color:"white"
+         }
+      }
+   }
+}
+});
+
+const subChart=new Chart(document.getElementById("subChart"),{
+    type:'bar',
+    data:{labels:[],datasets:[{label:'Minutes',data:[],backgroundColor:'#4caf50'}]},
+   options:{
+    responsive:true,
+    maintainAspectRatio:false,
+    layout:{
+        padding:{bottom:20}
+    },
+    scales:{
+        y:{ticks:{color:'white'}},
+        x:{ticks:{color:'white'}}
+    }
+}
+});
+
+const weekChart=new Chart(document.getElementById("weekChart"),{
+    type:'bar',
+    data:{
+        labels:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
+        datasets:[{label:'Hours',data:weeklyData,backgroundColor:'#9c27b0'}]
+    },
+  options:{
+    layout:{
+        padding:{bottom:20}
+    },
+    scales:{
+        y:{
+            beginAtZero:true,
+            min:0,
+            ticks:{color:'white'}
+        },
+        x:{
+            ticks:{color:'white'}
+        }
+    }
+}
+});
+
+function updateCharts(){
+
+    // 🔥 Pie Chart (Studied vs Remaining)
+    let remainingMinutes = Math.max(goalMinutes - studiedMinutes, 0);
+
+    pieChart.data.datasets[0].data = [
+        studiedMinutes,
+        remainingMinutes
+    ];
+    pieChart.update();
+
+
+    // 🔵 Subject Chart
+    subChart.data.labels = Object.keys(subjectMinutes);
+    subChart.data.datasets[0].data = Object.values(subjectMinutes);
+    subChart.update();
+
+
+    // 🟣 Weekly Chart
+    weekChart.data.datasets[0].data = weeklyData.map(v => Math.max(0,v));
+    weekChart.update();
+
+
+    // ⏱ Time display update
+    let studyH = Math.floor(studiedMinutes / 60);
+    let studyM = studiedMinutes % 60;
+
+    let goalH = Math.floor(goalMinutes / 60);
+    let goalM = goalMinutes % 60;
+
+    todayTime.textContent = studyH + " hours " + studyM + " min";
+    document.getElementById("goalShow").textContent =
+        goalH + " hours " + goalM + " min";
+}
+/* ---------- INIT ---------- */
+renderSubjects();
+updateDisplay();
+updateCharts();
+checkGoal();
+</script>
+
+</body>
+</html>
